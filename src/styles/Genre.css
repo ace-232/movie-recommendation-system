@@ -1,0 +1,75 @@
+.genre-selection-container {
+  text-align: center;
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background: url('../assets/bg3.jpg') no-repeat center center fixed;
+  background-size: cover;
+  width: 100vw;
+  height: 100vh;
+}
+
+.logo {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 80px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: bold;
+  margin-top: 50px;
+  color: white;
+}
+
+.subtitle {
+  font-size: 18px;
+  color: white;
+  margin-bottom: 20px;
+}
+
+.genre-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* 4 genres per row */
+  gap: 15px;
+  justify-content: center;
+  align-items: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.genre-button {
+  width: 150px;
+  padding: 15px;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  background: black !important;
+  border: 2px solid red !important;
+  color: white;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.genre-button.selected {
+  background: red;
+  color: black;
+}
+
+.proceed-button {
+  margin-top: 20px;
+  padding: 12px 20px;
+  font-size: 18px;
+  font-weight: bold;
+  background: red;
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.proceed-button:hover {
+  background: darkred;
+}
