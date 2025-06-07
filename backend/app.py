@@ -94,29 +94,33 @@ try:
         dtype={'year': 'float', 'genres': 'object'},
         engine='python'
     )
-    
+
+    # Filter only movies from 1995 onwards 🚀
+    movies_df = movies_df[movies_df["year"] >= 1995]
+
+    # Clean up titles for ID
     movies_df['id'] = movies_df['title'].apply(
-        lambda x: re.sub(r'\W+', '', x.lower()).strip()
+        lambda x: re.sub(r'\W+', '', str(x).lower()).strip()
     )
     movies_df = movies_df.dropna(subset=['id'])
     movies_df = movies_df[
         (movies_df['id'].notnull()) & 
         (movies_df['id'] != '') &
-        (movies_df['genres'].apply(len) > 0)
+        (movies_df['genres'].apply(lambda x: isinstance(x, str) and len(x) > 0))
     ]
 
     movies_df = movies_df.dropna(subset=["genres", "rating", "year"])
     movies_df = movies_df[
-        (movies_df['year'] >= 1900) & 
+        (movies_df['year'] >= 1995) & 
         (movies_df['year'] <= pd.Timestamp.now().year + 2)
     ]
     
     movies_df['year'] = movies_df['year'].astype('Int16')
     movies_df["genres"] = movies_df["genres"].astype(str).str.strip().str.lower().str.split('|')
     movies_df["genres"] = movies_df["genres"].apply(
-    lambda x: [g.strip().lower() for g in x if g.strip()]
-)
-    movies_df = movies_df[movies_df["genres"].apply(len) > 0] 
+        lambda x: [g.strip().lower() for g in x if g.strip()]
+    )
+    movies_df = movies_df[movies_df["genres"].apply(len) > 0]
     movies_df["rating"] = pd.to_numeric(movies_df["rating"], errors="coerce")
     movies_df = movies_df.drop_duplicates(subset=["title"])
     movies_df = movies_df.reset_index(drop=True)
@@ -127,6 +131,7 @@ except Exception as e:
     logger.error(f"Error loading movie data: {str(e)}")
     raise
 
+
 def normalize_genres(genres):
     if isinstance(genres, str):
         return [g.strip().lower() for g in genres.split('|') if g.strip()]
@@ -134,7 +139,6 @@ def normalize_genres(genres):
         return [g.strip().lower() for g in genres if isinstance(g, str)]
     return []
 
-from fuzzywuzzy import fuzz
 
 def get_fuzzy_genre_matches(user_genres, all_movies):
     scored_movies = []
@@ -1133,5 +1137,4 @@ def handle_recommendations():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True)
