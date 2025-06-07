@@ -15,8 +15,8 @@ const App = () => {
       <ErrorBoundary>
         <Routes>
           {/* Login Page */}
-          <Route path="/" element={<Login />} />
-
+          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/login" element={<Login />} />
           {/* Sign-Up Page */}
           <Route path="/signup" element={<SignUp />} />
 
