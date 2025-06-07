@@ -83,53 +83,51 @@ users_collection.create_index([("preference_history.timestamp", DESCENDING)])
 current_dir = os.path.dirname(os.path.abspath(__file__))
 MOVIE_DATA_PATH = os.path.join(current_dir, "ratings_modified.csv")
 
-if not os.path.isfile(MOVIE_DATA_PATH):
-    raise FileNotFoundError(f"Movie data file not found at: {MOVIE_DATA_PATH}")
+@lru_cache(maxsize=1)
+def load_movies_df():
+    try:
+        columns = ["title", "genres", "rating", "year"]
+        df = pd.read_csv(
+            MOVIE_DATA_PATH,
+            usecols=columns,
+            dtype={'year': 'float', 'genres': 'object'},
+            engine='python'
+        )
 
-try:
-    columns = ["title", "genres", "rating", "year"]
-    movies_df = pd.read_csv(
-        MOVIE_DATA_PATH,
-        usecols=columns,
-        dtype={'year': 'float', 'genres': 'object'},
-        engine='python'
-    )
+        # Filter only movies from 1995 onwards 🚀
+        df = df[df["year"] >= 1995]
 
-    # Filter only movies from 1995 onwards 🚀
-    movies_df = movies_df[movies_df["year"] >= 1995]
+        # Clean up titles for ID
+        df['id'] = df['title'].apply(
+            lambda x: re.sub(r'\W+', '', str(x).lower()).strip()
+        )
+        df = df.dropna(subset=['id'])
+        df = df[
+            (df['id'].notnull()) &
+            (df['id'] != '') &
+            (df['genres'].apply(lambda x: isinstance(x, str) and len(x) > 0))
+        ]
 
-    # Clean up titles for ID
-    movies_df['id'] = movies_df['title'].apply(
-        lambda x: re.sub(r'\W+', '', str(x).lower()).strip()
-    )
-    movies_df = movies_df.dropna(subset=['id'])
-    movies_df = movies_df[
-        (movies_df['id'].notnull()) & 
-        (movies_df['id'] != '') &
-        (movies_df['genres'].apply(lambda x: isinstance(x, str) and len(x) > 0))
-    ]
+        df = df.dropna(subset=["genres", "rating", "year"])
+        df = df[
+            (df['year'] <= pd.Timestamp.now().year + 2)
+        ]
 
-    movies_df = movies_df.dropna(subset=["genres", "rating", "year"])
-    movies_df = movies_df[
-        (movies_df['year'] >= 1995) & 
-        (movies_df['year'] <= pd.Timestamp.now().year + 2)
-    ]
-    
-    movies_df['year'] = movies_df['year'].astype('Int16')
-    movies_df["genres"] = movies_df["genres"].astype(str).str.strip().str.lower().str.split('|')
-    movies_df["genres"] = movies_df["genres"].apply(
-        lambda x: [g.strip().lower() for g in x if g.strip()]
-    )
-    movies_df = movies_df[movies_df["genres"].apply(len) > 0]
-    movies_df["rating"] = pd.to_numeric(movies_df["rating"], errors="coerce")
-    movies_df = movies_df.drop_duplicates(subset=["title"])
-    movies_df = movies_df.reset_index(drop=True)
+        df['year'] = df['year'].astype('Int16')
+        df["genres"] = df["genres"].astype(str).str.strip().str.lower().str.split('|')
+        df["genres"] = df["genres"].apply(
+            lambda x: [g.strip().lower() for g in x if g.strip()]
+        )
+        df = df[df["genres"].apply(len) > 0]
+        df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
+        df = df.drop_duplicates(subset=["title"])
+        df = df.reset_index(drop=True)
 
-    all_movies = movies_df[['title', 'genres', 'rating', 'year']].dropna(subset=['genres']).to_dict(orient='records')
+        return df
 
-except Exception as e:
-    logger.error(f"Error loading movie data: {str(e)}")
-    raise
+    except Exception as e:
+        logger.error(f"Error loading movie data: {str(e)}")
+        return pd.DataFrame()
 
 
 def normalize_genres(genres):
@@ -192,7 +190,7 @@ def genre_recommendations():
                 for user_genre in user_genres
                 for movie_genre in normalized_movie_genres
             )
-
+        movies_df = load_movies_df()
         matched_df = movies_df[movies_df["genres"].apply(fuzzy_match)]
         matched_df = matched_df.sort_values(by="rating", ascending=False)
 
@@ -282,6 +280,7 @@ def get_movie_poster(title, year=None):
 def get_movie_details(movie_id):
     """Get movie details from local dataset"""
     try:
+        movies_df = load_movies_df()
         movie = movies_df[movies_df['id'] == movie_id].iloc[0]
         return {
             "id": movie_id,
@@ -409,7 +408,7 @@ def dictionary_search():
             return re.sub(r'[^a-z0-9\s]', '', 
                 re.sub(r'\s*\(\d{4}\)', '', str(title)).lower().strip()
             )
-
+        movies_df = load_movies_df()
         search_df = movies_df.copy()
         search_df['search_title'] = search_df['title'].apply(clean_title)
         search_query_clean = clean_title(search_query)
@@ -500,6 +499,7 @@ def get_user_preferences():
 def get_recent_movies():
     try:
         current_year = datetime.now(timezone.utc).year
+        movies_df = load_movies_df()
         recent_movies = movies_df[
             (movies_df['year'] >= current_year - 5)
         ].sort_values(
@@ -835,7 +835,8 @@ def get_personalized_recommendations(user, limit=15):
         selected_match = len(set(clean_genres) & set(selected_genres))
         learned_score = sum([learned_genres.get(g, 0) for g in clean_genres])
         return pd.Series([clean_genres, selected_match, learned_score])
-
+    
+    movies_df = load_movies_df()
     movies_df[['clean_genres', 'selected_match', 'learned_score']] = movies_df.apply(score_row, axis=1)
     filtered = movies_df[(movies_df['selected_match'] > 0) | (movies_df['learned_score'] > 0)]
 
@@ -877,6 +878,7 @@ def get_mood_recommendations(user, mood, limit=15):
         return pd.Series([clean_genres, base_match, preferred_match, base_ratio])
 
     # Apply matching logic to the entire DataFrame
+    movies_df = load_movies_df()
     movies_df[['clean_genres', 'base_match', 'preferred_match', 'base_ratio']] = movies_df.apply(compute_matches, axis=1)
 
     # Filter by base genre match ratio
@@ -1000,6 +1002,7 @@ def handle_recommendations():
 
         elif rec_type == 'latest':
             current_year = datetime.now().year
+            movies_df = load_movies_df()
             recent_movies_df = movies_df[
                 (movies_df['year'] >= current_year - 2)
             ].sort_values(by='rating', ascending=False).head(40)
