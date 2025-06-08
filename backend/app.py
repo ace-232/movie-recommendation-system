@@ -32,11 +32,7 @@ logger.setLevel(logging.INFO)
 # Initialize Flask app
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DIST_DIR = os.path.join(BASE_DIR, "dist")
-app = Flask(
-    __name__,
-    static_folder=os.path.join(os.path.dirname(__file__), "../dist"),
-    static_url_path=""
-)
+app = Flask(__name__)
 CORS(
     app,
     resources={r"/api/*": {
@@ -351,6 +347,16 @@ def login():
     except Exception as e:
         logger.error(f"Login error for {email}: {str(e)}")
         return jsonify({"success": False, "message": "Internal server error"}), 500
+    
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DIST_DIR = os.path.join(BASE_DIR, "dist")
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_react(path):
+    file_path = os.path.join(DIST_DIR, path)
+    if path and os.path.exists(file_path):
+        return send_from_directory(DIST_DIR, path)
+    return send_from_directory(DIST_DIR, "index.html")
 
 @app.route('/api/save-genres', methods=['POST'])
 def save_genres():
@@ -1143,11 +1149,11 @@ def handle_recommendations():
             "error": "Recommendation service unavailable",
             "details": str(e)
         }), 500
-
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DIST_DIR = os.path.join(BASE_DIR, "dist")
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_react(path):
-    # if the file exists, serve it
     file_path = os.path.join(DIST_DIR, path)
     if path and os.path.exists(file_path):
         return send_from_directory(DIST_DIR, path)
