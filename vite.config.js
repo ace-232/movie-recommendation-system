@@ -4,6 +4,10 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
+    build: {
+    outDir: "dist",
+    emptyOutDir: true
+  },
     port: 3000, // The port on which Vite dev server will run
     open: true, // Automatically open the app in the browser
     proxy: {

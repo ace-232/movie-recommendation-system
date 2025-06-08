@@ -1,5 +1,5 @@
 from functools import lru_cache
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify, redirect, send_from_directory
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 from pymongo import MongoClient, ASCENDING, DESCENDING, TEXT
@@ -30,7 +30,11 @@ logger.setLevel(logging.INFO)
 
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    static_folder=os.path.join(os.path.dirname(__file__), "../dist"),
+    static_url_path=""
+)
 CORS(
     app,
     resources={r"/api/*": {
@@ -1141,6 +1145,13 @@ def handle_recommendations():
             "details": str(e)
         }), 500
 
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_react(path):
+    dist_dir = app.static_folder
+    if path and os.path.exists(os.path.join(dist_dir, path)):
+        return send_from_directory(dist_dir, path)
+    return send_from_directory(dist_dir, "index.html")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
