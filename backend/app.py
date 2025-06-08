@@ -296,7 +296,7 @@ def get_movie_details(movie_id):
 
 @app.route("/")
 def index():
-    return redirect("https://movie-recommendation-system-zqq0.onrender.com")
+    return redirect("https://movie-recommendation-system-zqq0.onrender.com/login")
 
 @app.route('/api/login', methods=['POST'])
 def login():
