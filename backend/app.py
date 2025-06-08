@@ -969,6 +969,7 @@ def mood_recommendations():
 @app.route('/api/recommendations', methods=['POST'])
 def handle_recommendations():
     try:
+        movies_df = load_movies_df()
         if not request.is_json:
             return jsonify({"error": "Missing JSON in request"}), 400
 
