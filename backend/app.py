@@ -1,5 +1,5 @@
 from functools import lru_cache
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 from pymongo import MongoClient, ASCENDING, DESCENDING, TEXT
@@ -294,6 +294,9 @@ def get_movie_details(movie_id):
         logger.error(f"Error getting details for {movie_id}: {str(e)}")
         return None
 
+@app.route("/")
+def index():
+    return redirect("https://movie-recommendation-system-zqq0.onrender.com")
 
 @app.route('/api/login', methods=['POST'])
 def login():
