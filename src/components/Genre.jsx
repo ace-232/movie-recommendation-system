@@ -35,7 +35,7 @@ function Genre() {
 
   const handleSaveGenres = async () => {
     try {
-      const email = localStorage.getItem("email"); // Get the email from localStorage
+      const email = localStorage.getItem("email");
       if (!email) {
         alert("Please log in.");
         navigate("/login");

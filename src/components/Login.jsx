@@ -27,13 +27,11 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store user session information
         localStorage.setItem("email", email);
         if (data.token) {
           localStorage.setItem("token", data.token);
         }
 
-        // Redirect based on genre selection status
         if (data.user.has_genres) {
           navigate("/recommendations");
       } else {

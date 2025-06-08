@@ -43,7 +43,7 @@ const Recommendation = () => {
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showFavouritePrompt, setShowFavouritePrompt] = useState(false);
   const navigate = useNavigate();
-  const [currentSource, setCurrentSource] = useState("personalized"); // default type
+  const [currentSource, setCurrentSource] = useState("personalized"); 
   const [movies, setMovies] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [userPreferences, setUserPreferences] = useState({
@@ -171,7 +171,6 @@ useEffect(() => {
       const email = localStorage.getItem("email");
       if (!email) return;
   
-      // Update local user preferences
       setUserPreferences((prev) => {
         const updatedPrefs = {
           ...prev,
@@ -183,14 +182,13 @@ useEffect(() => {
           updatedPrefs.disliked.delete(movieId);
           updatedPrefs.liked.add(movieId);
   
-          // 🎉 Trigger confetti
+  
           confetti({
             particleCount: 100,
             spread: 70,
             origin: { y: 0.6 }
           });
   
-          // 🌟 Show "Added to Favourites!" prompt
           setShowFavouritePrompt(true);
           setTimeout(() => setShowFavouritePrompt(false), 1000);
         } else if (action === "dislike") {
@@ -200,8 +198,7 @@ useEffect(() => {
   
         return updatedPrefs;
       });
-  
-      // ✅ Send rating to backend
+
       await axios.post("/api/rate-movie", {
         email,
         movie_id: movieId,
@@ -216,7 +213,7 @@ useEffect(() => {
   const fetchRecommendations = async (source) => {
     const type = source || currentSource;
   
-    if (type === "mood") return; // handled separately if you use a different system
+    if (type === "mood") return; 
   
     try {
       setLoadingStates(prev => ({ ...prev, main: true }));
@@ -237,7 +234,6 @@ useEffect(() => {
       const allMovies = response.data.movies || [];
       console.log(`[${type.toUpperCase()}] Raw response movies:`, allMovies.length);
   
-      // Apply genre filtering only for personalized recommendations
       const validMovies = type === "personalized"
         ? allMovies.filter(movie => {
             const movieGenres = new Set(
@@ -268,7 +264,7 @@ useEffect(() => {
   const fetchMoodRecommendations = async (mood) => {
         try {
       setLoadingStates(prev => ({...prev, mood: true}));
-      const email = localStorage.getItem("email"); // Get raw email
+      const email = localStorage.getItem("email"); 
       const response = await axios.get(
         `/api/mood-recommendations`,
         {
@@ -517,13 +513,12 @@ useEffect(() => {
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
           />
-          {/* Update the logout button in the navbar */}
 <button 
   className="logout-btn" 
   onClick={() => {
     localStorage.removeItem("email");
-    navigate("/", { replace: true }); // Force navigation
-    window.location.reload(); // Ensure clean state
+    navigate("/", { replace: true });
+    window.location.reload();
   }}
 >
   Logout

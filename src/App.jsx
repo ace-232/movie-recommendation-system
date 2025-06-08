@@ -11,16 +11,13 @@ const App = () => {
   
   return (
     <Router>
-      {/* Wrap entire app with ErrorBoundary */}
       <ErrorBoundary>
         <Routes>
-          {/* Login Page */}
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<Login />} />
-          {/* Sign-Up Page */}
+
           <Route path="/signup" element={<SignUp />} />
 
-          {/* Genre Selection Page */}
           <Route
             path="/genre"
             element={
@@ -30,7 +27,6 @@ const App = () => {
             }
           />
 
-          {/* Recommendation Page */}
           <Route
             path="/recommendations"
             element={

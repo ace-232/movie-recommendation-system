@@ -22,14 +22,12 @@ from collections import defaultdict
 from apscheduler.schedulers.background import BackgroundScheduler
 import numpy as np
 
-# Load environment variables
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# Initialize Flask app
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DIST_DIR = os.path.join(BASE_DIR, "dist")
 app = Flask(__name__)
@@ -44,17 +42,14 @@ CORS(
 )
 bcrypt = Bcrypt(app)
 
-# MongoDB Atlas connection
 MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
 
-# Access the database and collections
 db = client["movie"]
 movies_collection = db["movies"]
 users_collection = db["users"]
 ratings_collection = db["ratings"]
 
-# Create indexes
 movies_collection.create_index(
     [
         ("genres", TEXT),
@@ -64,7 +59,6 @@ movies_collection.create_index(
     name="genre_rating_year_index"
 )
 
-# Create compound index for mood recommendations
 movies_collection.create_index([
     ("genres", ASCENDING),
     ("rating", DESCENDING),
@@ -81,9 +75,6 @@ users_collection.create_index([("last_login", DESCENDING)])
 users_collection.create_index([("genres", ASCENDING)])
 users_collection.create_index([("preference_history.timestamp", DESCENDING)])
 
-# Load movie data
-import os
-import pandas as pd
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 MOVIE_DATA_PATH = os.path.join(current_dir, "ratings_95onwards.csv")
@@ -99,10 +90,8 @@ def load_movies_df():
             engine='python'
         )
 
-        # Filter only movies from 1995 onwards 🚀
         df = df[df["year"] >= 1995]
 
-        # Clean up titles for ID
         df['id'] = df['title'].apply(
             lambda x: re.sub(r'\W+', '', str(x).lower()).strip()
         )
@@ -153,7 +142,7 @@ def get_fuzzy_genre_matches(user_genres, all_movies):
         elif isinstance(movie_genres, list):
             movie_genres = [g for g in movie_genres if isinstance(g, str)]
         else:
-            continue  # skip invalid genre data
+            continue  
 
         score = 0
         for user_genre in user_genres:
@@ -161,10 +150,9 @@ def get_fuzzy_genre_matches(user_genres, all_movies):
                 if isinstance(user_genre, str) and isinstance(genre, str):
                     score += fuzz.partial_ratio(user_genre.lower(), genre.lower())
 
-        if score > 0:  # Only consider movies with non-zero match
+        if score > 0:  
             scored_movies.append((score, movie))
 
-    # Sort by descending score and return top matches
     scored_movies.sort(reverse=True, key=lambda x: x[0])
     return [m[1] for m in scored_movies]
 
@@ -179,14 +167,13 @@ def genre_recommendations():
         if not user or "genres" not in user or not user["genres"]:
             return jsonify({"error": "User genres not found"}), 404
 
-        # Normalize user genres (handle strings or dicts like {"name": "Action"})
+
         user_genres = [
             g["name"].strip().lower() if isinstance(g, dict) else str(g).strip().lower()
             for g in user["genres"]
         ]
 
         def fuzzy_match(movie_genres):
-            # Normalize movie genres as strings
             normalized_movie_genres = [
                 str(genre).strip().lower() for genre in movie_genres if isinstance(genre, str)
             ]
@@ -218,7 +205,6 @@ def get_movie_poster(title, year=None):
         api_key = os.getenv("TMDB_API_KEY")
         base_url = "https://api.themoviedb.org/3"
         
-        # First try with search parameters
         params = {
             "api_key": api_key,
             "query": clean_title,
@@ -235,7 +221,6 @@ def get_movie_poster(title, year=None):
         response.raise_for_status()
         data = response.json()
 
-        # Try to find exact match
         for result in data.get("results", []):
             if not result.get("poster_path"):
                 continue
@@ -248,12 +233,10 @@ def get_movie_poster(title, year=None):
             if title_similarity >= 90:
                 return f"https://image.tmdb.org/t/p/w500{result['poster_path']}"
 
-        # Fallback to first result with poster
         for result in data.get("results", []):
             if result.get("poster_path"):
                 return f"https://image.tmdb.org/t/p/w500{result['poster_path']}"
 
-        # If no results, try with discover API
         discover_params = {
             "api_key": api_key,
             "sort_by": "popularity.desc",
@@ -385,15 +368,12 @@ def save_genres():
 @app.route('/api/search', methods=['GET'])
 def dictionary_search():
     try:
-        # Get parameters from URL query string
         search_query = request.args.get('query', '').strip().lower()
         email = request.args.get('email')
 
-        # Validate search query - updated to allow single character searches
         if len(search_query) < 1:
             return jsonify({"movies": []}), 200
 
-        # Update user search history if email exists
         if email:
             users_collection.update_one(
                 {"email": email},
@@ -407,8 +387,6 @@ def dictionary_search():
                     }
                 }
             )
-
-        # Clean and prepare search terms
         def clean_title(title):
             return re.sub(r'[^a-z0-9\s]', '', 
                 re.sub(r'\s*\(\d{4}\)', '', str(title)).lower().strip()
@@ -418,37 +396,31 @@ def dictionary_search():
         search_df['search_title'] = search_df['title'].apply(clean_title)
         search_query_clean = clean_title(search_query)
 
-        # Enhanced matching logic with fuzzy scoring
         search_df['fuzzy_score'] = search_df['search_title'].apply(
             lambda x: fuzz.partial_ratio(search_query_clean, x)
         )
 
-        # Match scoring logic
         search_df['match_type'] = 'none'
         search_df['match_priority'] = 0
-        
-        # Priority 3: Exact match
+    
         exact_mask = search_df['search_title'] == search_query_clean
         search_df.loc[exact_mask, 'match_type'] = 'exact'
         search_df.loc[exact_mask, 'match_priority'] = 3
-
-        # Priority 2: Starts with
         start_mask = search_df['search_title'].str.startswith(search_query_clean)
         search_df.loc[start_mask & ~exact_mask, 'match_type'] = 'prefix'
         search_df.loc[start_mask & ~exact_mask, 'match_priority'] = 2
 
-        # Priority 1: Contains or fuzzy match
+
         contains_mask = search_df['search_title'].str.contains(search_query_clean, na=False)
         fuzzy_mask = search_df['fuzzy_score'] >= 70
         combined_mask = (contains_mask | fuzzy_mask) & ~exact_mask & ~start_mask
         search_df.loc[combined_mask, 'match_type'] = 'fuzzy'
         search_df.loc[combined_mask, 'match_priority'] = 1
 
-        # Process results - increased result count
         result_df = search_df[search_df['match_priority'] > 0].sort_values(
             ['match_priority', 'fuzzy_score', 'year'],
             ascending=[False, False, False]
-        ).head(30)  # Increased from 20 to 30
+        ).head(30) 
 
         valid_movies = []
         for _, row in result_df.iterrows():
@@ -468,7 +440,7 @@ def dictionary_search():
             except Exception as e:
                 logger.error(f"Poster error for {row['title']}: {str(e)}")
             
-            if len(valid_movies) >= 20:  # Increased from 10 to 20
+            if len(valid_movies) >= 20: 
                 break
 
         return jsonify({
@@ -578,7 +550,6 @@ def rate_movie():
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        # Remove from both liked and disliked
         users_collection.update_one(
             {"email": email},
             {
@@ -589,7 +560,6 @@ def rate_movie():
             }
         )
 
-        # Add to correct list
         users_collection.update_one(
             {"email": email},
             {
@@ -599,7 +569,7 @@ def rate_movie():
             }
         )
 
-        # Get genres from movie
+
         movie = movies_collection.find_one({"id": movie_id})
         if not movie or "genres" not in movie:
             return jsonify({"message": "Preference updated (no genres found)"}), 200
@@ -610,11 +580,9 @@ def rate_movie():
         else:
             genres = [g.strip().lower() for g in genres if isinstance(g, str)]
 
-        # ✅ General genre learning (only for selected sources)
         if source in ["personalized", "hybrid", "latest"]:
             update_learned_general_genres(user, genres, liked)
 
-        # ✅ Mood-based genre learning
         if source.startswith("mood-"):
             mood_name = source.split("-", 1)[1]
             update_learned_genres(user, genres, liked)
@@ -643,7 +611,6 @@ def signup():
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
         current_time = datetime.now(timezone.utc)
         
-        # Initialize mood profiles
         mood_genres = {
             mood: {
                 "base": config["base"],
@@ -671,7 +638,7 @@ def signup():
         logger.error(f"Signup error: {str(e)}")
         return jsonify({"error": "Registration failed"}), 500      
 
-# Mood configuration matching your exact requirements
+
 MOOD_GENRES = {
     "feel-good": {
         "base": ["comedy", "romance", "musical", "children", "animation"],
@@ -703,7 +670,6 @@ VALID_GENRES = {
     ]
 }
 
-# ====== CORE FUNCTIONS ======
 def normalize_genres(genres):
     """Sanitize and validate genres against CSV list"""
     return list({
@@ -712,7 +678,7 @@ def normalize_genres(genres):
         if g.strip().lower() in VALID_GENRES
     })
 
-# In update_learned_genres function
+
 def update_learned_genres(user, movie_genres, liked):
     """Update learned genres per mood with preferred base genres"""
     updates = {}
@@ -724,7 +690,7 @@ def update_learned_genres(user, movie_genres, liked):
         min_match = config["min_match"]
         learn_cap = config["learn_cap"]
         
-        # Calculate match ratio for this mood's base
+
         matched_base = movie_genres & base_genres
         total_genres = len(movie_genres)
         match_ratio = len(matched_base) / total_genres if total_genres > 0 else 0
@@ -734,15 +700,14 @@ def update_learned_genres(user, movie_genres, liked):
             update_needed = False
             
             if liked:
-                # Add matched base genres up to learn cap
+        
                 new_learned = current_learned.union(matched_base)
                 if len(new_learned) > learn_cap:
-                    # Prioritize most recent preferences
+                
                     existing = list(current_learned)
                     new_learned = set(list(matched_base) + existing)[:learn_cap]
                 update_needed = new_learned != current_learned
             else:
-                # Remove disliked base genres
                 new_learned = current_learned - matched_base
                 update_needed = new_learned != current_learned
 
@@ -757,7 +722,7 @@ def update_learned_genres(user, movie_genres, liked):
         )
     return bool(updates)
    
-# ===== WEIGHT DECAY FUNCTION =====
+
 def apply_weight_decay(user):
     """Safely apply genre learning weight decay with robust datetime parsing."""
     try:
@@ -767,11 +732,10 @@ def apply_weight_decay(user):
         for mood, mood_data in user.get("mood_genres", {}).items():
             last_updated_raw = mood_data.get("updated")
             
-            # Skip if no update timestamp
+        
             if not last_updated_raw:
                 continue
 
-            # Normalize datetime
             try:
                 if isinstance(last_updated_raw, str):
                     last_updated = datetime.fromisoformat(last_updated_raw)
@@ -785,7 +749,7 @@ def apply_weight_decay(user):
                 logger.warning(f"Invalid datetime for mood '{mood}': {last_updated_raw}")
                 continue
 
-            # Decay logic
+        
             hours_diff = (current_time - last_updated).total_seconds() / 3600
             decay_factor = 0.97 ** (hours_diff / 24)
 
@@ -819,7 +783,7 @@ def get_liked_movies():
     liked_ids = user["liked_movies"]
     liked_movies = list(movies_collection.find({"id": {"$in": liked_ids}}))
     for m in liked_movies:
-        m["_id"] = str(m["_id"])  # Convert ObjectId to string if needed
+        m["_id"] = str(m["_id"]) 
 
     return jsonify(liked_movies)
 
@@ -858,11 +822,9 @@ def get_personalized_recommendations(user, limit=15):
 def get_mood_recommendations(user, mood, limit=15):
     config = MOOD_GENRES[mood]
 
-    # ✅ Normalize base and learned genres (strip + lowercase)
     base_genres = [g.strip().lower() for g in config["base"]]
     learned_genres = [g.strip().lower() for g in user["mood_genres"][mood].get("learned", [])]
 
-    # 🔍 Optional debug logging to verify genres
     print(f"[DEBUG] Mood: {mood}")
     print(f"[DEBUG] Base genres: {base_genres}")
     print(f"[DEBUG] Learned genres: {learned_genres}")
@@ -882,30 +844,24 @@ def get_mood_recommendations(user, mood, limit=15):
         base_ratio = base_match / len(base_genres) if base_genres else 0
         return pd.Series([clean_genres, base_match, preferred_match, base_ratio])
 
-    # Apply matching logic to the entire DataFrame
     movies_df = load_movies_df()
     movies_df[['clean_genres', 'base_match', 'preferred_match', 'base_ratio']] = movies_df.apply(compute_matches, axis=1)
 
-    # Filter by base genre match ratio
-    filtered = movies_df[movies_df['base_ratio'] >= config["min_match"]]
+    filtered = movies_df[movies_df['base_ratio'] >= 0]
 
-    # Sort based on relevance
     filtered = filtered.sort_values(
         by=['preferred_match', 'base_match', 'rating', 'year'],
         ascending=[False, False, False, False]
     )
 
-    # Sample top recommendations
     top_n = filtered.head(limit * 2)
     if len(top_n) > limit:
         top_n = top_n.sample(limit)
 
-    # Return cleaned-up DataFrame
     return top_n[[
         'id', 'title', 'clean_genres', 'year', 'rating', 'base_match', 'preferred_match'
     ]].rename(columns={"clean_genres": "genres"})
 
-# ====== UPDATED ROUTES ======
   
 @app.route('/api/mood-recommendations', methods=['GET'])
 def mood_recommendations():
@@ -947,7 +903,6 @@ def mood_recommendations():
 
         print(f"[MOOD API] Final mood-filtered movies: {len(results)}")
 
-        # Only log sample genres if there are any results
         if results:
             logger.debug(f"[DEBUG] Sample genres in recommendations: {results[0]['genres']}")
         else:
@@ -1084,7 +1039,6 @@ def handle_recommendations():
            def normalize_title(title):
              return unidecode(str(title)).lower().replace(" ", "").strip()
 
-    # Match liked titles from the user with titles in the DataFrame
            matched_movies = movies_df[movies_df['title'].apply(lambda t: normalize_title(t) in liked_titles)]
 
            recommendations = matched_movies.to_dict(orient="records")

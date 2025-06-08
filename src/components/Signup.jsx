@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/Login.css"; // Reuse the same CSS file
+import "../styles/Login.css";
 import logo from "../assets/logo.jpg";
 import { MOOD_GENRES } from './Recommendation';
 
@@ -34,13 +34,12 @@ const SignUp = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Automatically log in the user after successful signup
         localStorage.setItem("email", email);
         if (data.token) {
           localStorage.setItem("token", data.token);
         }
         
-        // Redirect to genre selection for new users
+
         navigate("/genre");
       } else {
         alert(data.message || "Signup failed. Please try again.");
