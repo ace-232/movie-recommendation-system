@@ -87,8 +87,6 @@ import pandas as pd
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 MOVIE_DATA_PATH = os.path.join(current_dir, "ratings_95onwards.csv")
-movies_df = pd.read_csv(MOVIE_DATA_PATH, sep="|")
-print("Loaded columns:", movies_df.columns.tolist())
 
 @lru_cache(maxsize=1)
 def load_movies_df():
