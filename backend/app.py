@@ -83,7 +83,7 @@ users_collection.create_index([("preference_history.timestamp", DESCENDING)])
 
 # Load movie data
 current_dir = os.path.dirname(os.path.abspath(__file__))
-MOVIE_DATA_PATH = os.path.join(current_dir, "ratings_modified.csv")
+MOVIE_DATA_PATH = os.path.join(current_dir, "ratings_95onwards.csv")
 
 @lru_cache(maxsize=1)
 def load_movies_df():
