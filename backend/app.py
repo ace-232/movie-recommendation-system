@@ -293,10 +293,10 @@ def get_movie_details(movie_id):
     except Exception as e:
         logger.error(f"Error getting details for {movie_id}: {str(e)}")
         return None
-
+    
 @app.route("/")
 def index():
-    return redirect("https://movie-recommendation-system-zqq0.onrender.com/login")
+    return redirect("https://movie-recommendation-system-zqq0.onrender.com/login") 
 
 @app.route('/api/login', methods=['POST'])
 def login():
