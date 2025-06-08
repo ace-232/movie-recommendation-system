@@ -36,7 +36,7 @@ app = Flask(__name__)
 CORS(
     app,
     resources={r"/api/*": {
-        "origins": "http://localhost:3000",
+        "origins": "https://movie-recommendation-system-1-ac7y.onrender.com",
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"],
         "expose_headers": ["Content-Type"]

@@ -68,7 +68,7 @@ const Recommendation = () => {
       try {
         const email = localStorage.getItem("email");
         const response = await axios.get(
-          `http://localhost:5000/api/user-preferences?email=${encodeURIComponent(email)}`
+          `/api/user-preferences?email=${encodeURIComponent(email)}`
         );
         setUserPreferences({
           liked: new Set(response.data.liked),
@@ -85,7 +85,7 @@ const Recommendation = () => {
   useEffect(() => {
     const fetchTopMovies = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/recent-movies');
+        const response = await axios.get('/api/recent-movies');
         setTopMovies(response.data.movies.slice(0, 5));
       } catch (error) {
         console.error('Error fetching top movies:', error);
@@ -139,7 +139,7 @@ useEffect(() => {
 
     setLoadingStates(prev => ({...prev, search: true}));
     try {
-      const response = await axios.get('http://localhost:5000/api/search', {
+      const response = await axios.get('/api/search', {
         params: { query },
         headers: {'Content-Type': 'application/json'}
       });
@@ -202,7 +202,7 @@ useEffect(() => {
       });
   
       // ✅ Send rating to backend
-      await axios.post("http://localhost:5000/api/rate-movie", {
+      await axios.post("/api/rate-movie", {
         email,
         movie_id: movieId,
         action,
@@ -229,7 +229,7 @@ useEffect(() => {
   
       console.log(`[${type.toUpperCase()}] Requesting recommendations...`);
   
-      const response = await axios.post("http://localhost:5000/api/recommendations", {
+      const response = await axios.post("/api/recommendations", {
         email,
         type: type
       });
@@ -270,7 +270,7 @@ useEffect(() => {
       setLoadingStates(prev => ({...prev, mood: true}));
       const email = localStorage.getItem("email"); // Get raw email
       const response = await axios.get(
-        `http://localhost:5000/api/mood-recommendations`,
+        `/api/mood-recommendations`,
         {
           params: { email, mood },
           headers: {

@@ -42,7 +42,7 @@ function Genre() {
         return;
       }
 
-      const response = await axios.post("http://localhost:5000/api/save-genres", {
+      const response = await axios.post("/api/save-genres", {
         email: email,
         genres: selectedGenres,
       });
