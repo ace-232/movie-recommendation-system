@@ -30,6 +30,8 @@ logger.setLevel(logging.INFO)
 
 
 # Initialize Flask app
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DIST_DIR = os.path.join(BASE_DIR, "dist")
 app = Flask(
     __name__,
     static_folder=os.path.join(os.path.dirname(__file__), "../dist"),
@@ -1145,10 +1147,11 @@ def handle_recommendations():
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_react(path):
-    dist_dir = app.static_folder
-    if path and os.path.exists(os.path.join(dist_dir, path)):
-        return send_from_directory(dist_dir, path)
-    return send_from_directory(dist_dir, "index.html")
+    # if the file exists, serve it
+    file_path = os.path.join(DIST_DIR, path)
+    if path and os.path.exists(file_path):
+        return send_from_directory(DIST_DIR, path)
+    return send_from_directory(DIST_DIR, "index.html")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
